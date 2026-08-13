@@ -1,0 +1,10 @@
+{
+  "name": "time-survivors",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Time Survivors: Chapter 0 — Canvas survivors-like 复刻（ES Modules 工程版）",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

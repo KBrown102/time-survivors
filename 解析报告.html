@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Time Survivors 复刻 · 解析与实现对照报告</title>
+<style>
+  :root{ --bg:#0f1320; --card:#171c2e; --ink:#e8ecf6; --mut:#9aa6c4; --acc:#ff9ecf; --acc2:#7ec8ff; --ok:#7dffa0; --line:#2a3350; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 -apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:32px 18px}
+  .wrap{max-width:920px;margin:0 auto}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:.5px}
+  h2{font-size:19px;margin:34px 0 12px;padding-left:11px;border-left:4px solid var(--acc)}
+  h3{font-size:16px;color:var(--acc2);margin:18px 0 8px}
+  p,li{color:var(--ink)} .mut{color:var(--mut)}
+  .sub{color:var(--mut);margin:0 0 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  table{width:100%;border-collapse:collapse;margin:8px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#1d2440;color:var(--acc2)}
+  td .ok{color:var(--ok)} td .no{color:#ff8a8a}
+  code{background:#20284a;padding:1px 6px;border-radius:5px;color:#ffd6ec;font-size:13px}
+  .pill{display:inline-block;background:#20284a;border:1px solid var(--line);border-radius:999px;padding:2px 10px;margin:3px 4px 3px 0;font-size:13px;color:var(--acc2)}
+  .hero{display:flex;gap:18px;flex-wrap:wrap}.hcard{flex:1 1 180px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .hcard b{color:var(--acc)} .hcard .r{color:var(--mut);font-size:13px}
+  ul{margin:6px 0 6px 0;padding-left:20px}
+  .ft{color:var(--mut);font-size:13px;margin-top:28px;text-align:center}
+  a{color:var(--acc2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>《Time Survivors: Chapter 0》复刻 · 解析与实现对照</h1>
+<p class="sub">从 UE5 资源清单逆向设计蓝图，用单文件 Canvas 复刻可玩核心循环 · 美术与音乐全部原创</p>
+
+<div class="card">
+  <b>一句话结论：</b>原版是 Unreal Engine 5 的历史名人 Roguelike 割草 + 弹幕游戏。其美术音乐打包在 <code>.pak/.ucas</code> 中，<b>无法也不应逆向搬运（侵权红线）</b>。本项目只复用其<b>通用玩法框架</b>与<b>公共领域历史人物</b>，美术全部运行时程序化绘制，得到一款双击 <code>index.html</code> 即玩的单文件复刻。
+</div>
+
+<h2>1. 怎么"解析"原版的（不破解，只读清单）</h2>
+<div class="card">
+<ul>
+  <li><b>读取资源清单（Manifest_UFSFiles，约 7800 行）</b>：从 Steam 安装目录定位 <code>.../Time Survivors Chapter 0/...</code> 的 <code>.manifest</code> 与目录结构，提取资源命名规律，而非解包 <code>.pak/.ucas</code> 二进制。</li>
+  <li><b>命名即设计文档</b>：资源名暴露了 <code>Hero_*</code>、<code>WaveWeapon_*</code>、<code>Enemy_*</code>、<code>Buff_*</code>、时代/关卡等分类，据此还原出数据规模。</li>
+  <li><b>公开资料交叉验证</b>：开发者 Lunar Chili、免费 Chapter 0、历史名人题材、2 个时代（黑暗/石器）、树状"元进化"、150+ 道具等官方信息。</li>
+  <li><b>只取"玩法框架"</b>：俯视角、自动攻击、经验三选一、波次导演、Boss 时间线——这些是 Survivos-like 品类的通用设计，不属于原版知识产权。</li>
+</ul>
+</div>
+
+<h2>2. 原版设计蓝图（据清单与公开资料解析）</h2>
+<div class="grid">
+  <div class="card"><b>规模</b><div style="margin-top:6px">
+    <span class="pill">8 名角色</span><span class="pill">32 种武器</span>
+    <span class="pill">41 种敌人</span><span class="pill">2 个时代（黑暗 / 石器）</span>
+    <span class="pill">树状"元进化"</span><span class="pill">150+ 道具/Buff</span>
+  </div></div>
+  <div class="card"><b>核心循环</b><div style="margin-top:6px">
+    移动 + 武器自动攻击 → 击杀掉经验/金币 → 升级触发三选一（新武器/升级/强化）→ 波次随时间变难 → 限时 Boss → 结算。
+  </div></div>
+</div>
+
+<h2>3. 复刻范围与红线</h2>
+<table>
+  <tr><th>维度</th><th>原版</th><th>复刻</th><th>说明</th></tr>
+  <tr><td>引擎/技术</td><td>Unreal Engine 5</td><td>单文件 Classic Script + Canvas</td><td>零依赖、<code>file://</code> 双击即玩</td></tr>
+  <tr><td>美术资源</td><td class="no">打包在 .pak（不碰）</td><td class="ok">全部运行时程序化绘制</td><td>像素精灵离屏预渲染并缓存，无外部图片</td></tr>
+  <tr><td>音乐音效</td><td class="no">版权音频（不碰）</td><td class="ok">暂以视觉打击感替代</td><td>白闪/击退/粒子/屏震/飘字</td></tr>
+  <tr><td>角色题材</td><td>历史名人</td><td>历史名人（公共领域）</td><td>林肯/特斯拉/克利奥帕特拉/织田信长，可用</td></tr>
+  <tr><td>玩法框架</td><td>Survivors-like 通用设计</td><td class="ok">完整复刻</td><td>非原版独占，可合法复用思路</td></tr>
+</table>
+
+<h2>4. 复刻实现对照</h2>
+<h3>英雄（4 / 原版 8）— 各带专属特殊技</h3>
+<div class="hero">
+  <div class="hcard"><b>林肯 · 壁垒者</b><div class="r">HP120 速175 · 起手连枷</div>特殊：樱花壁垒（旋转花瓣护盾，撞到削血）</div>
+  <div class="hcard"><b>特斯拉 · 电击者</b><div class="r">HP95 速185 · 起手线圈</div>特殊：电极链（闪电群内连锁 + 过载闪光）</div>
+  <div class="hcard"><b>克利奥帕特拉 · 召唤者</b><div class="r">HP100 速190 · 起手水蛭镖</div>特殊：圣甲虫伴生（绕身自动咬人 + 减速）</div>
+  <div class="hcard"><b>织田信长 · 忍者</b><div class="r">HP90 速215 · 起手飞镖</div>特殊：疾风（常驻 +15% 移速，叠"急速"被动）</div>
+</div>
+
+<h3>武器（10 / 原版 32）· 开火模式全覆盖</h3>
+<table>
+  <tr><th>武器</th><th>模式</th><th>武器</th><th>模式</th></tr>
+  <tr><td>连枷</td><td>orbit 环绕</td><td>特斯拉线圈</td><td>chain 连锁</td></tr>
+  <tr><td>火球</td><td>nearest</td><td>黑洞</td><td>area 周期AOE</td></tr>
+  <tr><td>飞镖</td><td>spread 扇形</td><td>地雷阵</td><td>mine</td></tr>
+  <tr><td>回旋镖</td><td>boomerang 回收</td><td>水蛭镖 / 冰球 / 连弩</td><td>nearest / spread</td></tr>
+</table>
+
+<h3>敌人与节奏</h3>
+<table>
+  <tr><th>类别</th><th>复刻内容</th></tr>
+  <tr><td>普通敌人（8）</td><td>鼠群(swarm) · 骷髅(chase) · 蝙蝠(swarm) · 迅猛龙(dasher) · 狼(chase) · 女巫(ranged) · 蛮兵(tank) · 霸王龙(miniboss)</td></tr>
+  <tr><td>特殊事件</td><td>蝙蝠群 / 列阵冲锋 / 单霸王龙 / 双霸王龙 / 终局Boss，按时间线触发</td></tr>
+  <tr><td>终局Boss</td><td>时之守护者：弹幕环（bullet-hell 味）+ 高血量，击杀即胜利</td></tr>
+  <tr><td>被动（8）</td><td>力量/急速/领域/疾行/活力/回复/幸运/磁力，各 3–5 级</td></tr>
+  <tr><td>难度曲线</td><td>敌人血量 <code>× (1 + t/200)</code> · 伤害 <code>× (1 + t/600)</code> · 波次导演带 420 软上限防爆炸</td></tr>
+  <tr><td>计时</td><td>20 分钟生存；撑到终局或击杀时之守护者即胜利</td></tr>
+</table>
+
+<h2>5. 技术架构（单文件 Canvas 复刻要点）</h2>
+<div class="card">
+<ul>
+  <li><b>零构建零依赖</b>：用 <code>.js</code> 经典脚本（非 ES module），保证 <code>file://</code> 双击直接运行。</li>
+  <li><b>程序化像素美术</b>：<code>buildSprites()</code> 离屏 Canvas 绘制并缓存所有精灵，无任何外部图片。</li>
+  <li><b>对象池</b>：敌人/投射物/特效/伤害数字全部复用，避免 GC 抖动。</li>
+  <li><b>空间网格</b>：<code>Grid</code>（cell=90）做邻域查询与软分离，支撑大量敌人同屏。</li>
+  <li><b>波次导演</b>：<code>WAVES</code> 时间线数组驱动分段生成与特殊事件。</li>
+  <li><b>打击感</b>：白闪、击退、粒子爆裂、屏幕震动、伤害飘字（已加 48 条上限防掉帧）。</li>
+</ul>
+</div>
+
+<h2>6. 验证结论</h2>
+<div class="card">
+<ul>
+  <li><b>语法自检</b>：<code>index.html</code> 内联数据层 + <code>sprites/engine/combat/boot.js</code> 全部通过 <code>node --check</code>。</li>
+  <li><b>无头冒烟测试</b>（<code>_smoke.js</code>，桩件模拟浏览器）：跑通 1800 帧，<b>10/10 武器、8/8 敌人、4/4 特殊技全部执行</b>，且"击杀终局Boss→胜利""玩家阵亡→失败"两条结算路径均验证通过，全程零运行期错误。</li>
+  <li><b>已修复的 3 个隐患</b>：
+    <ol>
+      <li><code>openLevelUp</code> / <code>buildHeroList</code> 中 <code>el.innerHTML +=</code> 会把已绘制的 canvas 图标序列化成空白——改用 <code>createElement + textContent + appendChild</code>。</li>
+      <li>伤害飘字 <code>G.dmgs</code> 无上限，密集战斗掉帧——加 48 条硬上限 + 计数器（局重开时归零）。</li>
+      <li>织田信长 <code>special:'swift'</code> 原无任何处理（专属"疾风"是空壳）——在 <code>makePlayer</code> 里给 <code>mul.speed</code> 常驻 +15%。</li>
+    </ol>
+  </li>
+</ul>
+</div>
+
+<h2>7. 已知限制 & 后续可加</h2>
+<div class="card">
+<ul>
+  <li>原版 2 时代 / 树状元进化 / 150+ 道具：当前为单地图 + 武器线性升级，未做分支进化树。</li>
+  <li>音乐音效暂缺（用视觉打击感替代）；后续可加 WebAudio 程序化音效。</li>
+  <li>角色/武器/敌人为"精选可玩子集"，可按同样数据驱动结构继续扩充到接近原版规模。</li>
+</ul>
+</div>
+
+<h2>8. 怎么玩</h2>
+<div class="card">
+<ul>
+  <li>直接双击 <b>index.html</b>（或拖进浏览器）。无需服务器、无需联网。</li>
+  <li><b>WASD / 方向键</b>移动，武器自动攻击；<b>空格</b>暂停。</li>
+  <li>升级时三选一（新武器 / 升级 / 强化）；活过 20 分钟或击杀时之守护者即胜利。</li>
+</ul>
+</div>
+
+<p class="ft">复刻项目 · 单文件 Canvas · 美术程序化原创 · 仅供学习与非商业把玩</p>
+</div>
+</body>
+</html>

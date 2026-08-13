@@ -1,0 +1,20 @@
+# 依赖
+node_modules/
+
+# 日志
+*.log
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+
+# 构建产物（本项目零构建，仅占位）
+dist/
+build/
+
+# 本地临时
+tmp/

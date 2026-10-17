@@ -7,6 +7,12 @@
 
 ---
 
+## 🕹️ 在线试玩
+
+👉 [https://KBrown102.github.io/time-survivors/](https://KBrown102.github.io/time-survivors/)（GitHub Pages，无需安装 Node 即可体验）
+
+---
+
 ## 快速开始
 
 需要本机装有 **Node.js**（仅用作静态服务器，不参与打包）。
@@ -100,4 +106,4 @@ node _smoke.mjs
 
 ## 许可证
 
-个人项目，仅供学习与交流。
+本项目使用 MIT License，详见 [LICENSE](./LICENSE) 文件。
